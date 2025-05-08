@@ -37,6 +37,15 @@ static void registry_global_handler_remove(void *data, struct wl_registry *regis
     /* no-op */
 }
 
+static const struct zwlr_screencopy_frame_v1_listener frame_listener = {
+    .buffer_done = frame_handle_buffer_done,
+    .flags       = frame_handle_flags,
+    .ready       = frame_handle_ready,
+    .failed      = frame_handle_failed,
+    .format      = frame_handle_format,
+    .buffer      = frame_handle_buffer
+};
+
 int main(int argc, char *argv[]) {
 
     struct wl_display *display = wl_display_connect(NULL);
@@ -61,11 +70,22 @@ int main(int argc, char *argv[]) {
         .global_remove = registry_global_handler_remove,
     };
 
+    //register registry event handler
     wl_registry_add_listener(registry, &registry_listener, NULL);
+    wl_display_roundtrip(display);
     
-    while(1) {
+    if (!shm || !output || !screencopy) {
 
-        wl_display_dispatch(display);
+        printf("Required interfaces not available\n");
+        return -1;
     }
+
+    //register frame event handler
+    struct zwlr_screencopy_frame_v1 *frame = zwlr_screencopy_manager_v1_capture_output(screencopy, 1, output);
+    zwlr_screencopy_frame_v1_add_listener(frame, &frame_listener, NULL);
+
+    // start the dispatch event loop
+    while (1) {wl_display_dispathc(display);}
+
     return 0;
 }
