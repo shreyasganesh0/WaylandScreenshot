@@ -1,3 +1,5 @@
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
 #include <stdio.h>
 #include <string.h>
 #include <wayland-client.h>
@@ -36,15 +38,14 @@ static void registry_global_handler_remove(void *data, struct wl_registry *regis
 
     /* no-op */
 }
+static void frame_handle_buffer_done(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
+static void frame_handle_flags(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t flags) { )
+static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
+static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
+static void frame_handle_format(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format) {}
+static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
 
-static const struct zwlr_screencopy_frame_v1_listener frame_listener = {
-    .buffer_done = frame_handle_buffer_done,
-    .flags       = frame_handle_flags,
-    .ready       = frame_handle_ready,
-    .failed      = frame_handle_failed,
-    .format      = frame_handle_format,
-    .buffer      = frame_handle_buffer
-};
+
 
 int main(int argc, char *argv[]) {
 
