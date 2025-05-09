@@ -43,8 +43,9 @@ static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *fram
     }
 
     char file_path[128];
-    sprintf(file_path, "Screenshots/screenshot-%s.png", buf);
+    sprintf(file_path, "Screenshots/screenshot-%s.jpg", buf);
 
+    printf("Writing to file path %s\n", file_path);
     char *rgb = convert_to_rgb();
     int quality = 90; // 1 - 100
     if(!stbi_write_jpg(file_path, frame_cap.width, frame_cap.height, 3, rgb, quality)) {
@@ -53,6 +54,9 @@ static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *fram
         return;
     }
 
+    free(rgb);
+    close(frame_cap.fd);
+    zwlr_screencopy_frame_v1_destroy(frame);
 }
 
 static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *frame) {
@@ -72,14 +76,18 @@ static void buffer_release(void *data, struct wl_buffer *wl_buffer) {
     wl_buffer_destroy(wl_buffer);
 }
 
-static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format, uint32_t height, uint32_t width, uint32_t stride) {
+static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride) {
 
+    frame_cap.format = format;
     frame_cap.width = width;
     frame_cap.height = height;
     frame_cap.stride = stride;
+    fprintf(stderr,
+            "→ BUFFER EVENT: fmt=0x%08x, width=%u, height=%u, stride=%u\n",
+            format, width, height, stride);
 
-    size_t size = stride * height;
-    char template[] = "~/Screenshots/screenshot-XXXXXX";
+    size_t size = (size_t)stride * height;
+    char template[] = "/tmp/screenshot-XXXXXX";
     frame_cap.fd = mkstemp(template);
     if (frame_cap.fd == -1) {
 
@@ -89,15 +97,16 @@ static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *fra
 
     ftruncate(frame_cap.fd, size);
     frame_cap.data = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, frame_cap.fd, 0);
-    if (frame_cap.data == NULL) {
+    if (frame_cap.data == MAP_FAILED) {
 
-        printf("Failed to allocated memory\n");
+        perror("mmap");
+        close(frame_cap.fd);
         return;
     }
     unlink(template);
 
     struct wl_shm_pool *pool = wl_shm_create_pool(shm, frame_cap.fd, size);
-    frame_cap.wl_buffer = wl_shm_pool_create_buffer(pool, 0 , width, height, stride, WL_SHM_FORMAT_ARGB8888);
+    frame_cap.wl_buffer = wl_shm_pool_create_buffer(pool, 0 , width, height, stride, format);
     wl_shm_pool_destroy(pool);
     struct wl_buffer_listener buffer_listener = {
 

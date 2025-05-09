@@ -20,7 +20,7 @@ static void frame_handle_flags(void *data, struct zwlr_screencopy_frame_v1 *fram
 static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec);
 static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *frame);
 /*static void frame_handle_format(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format);*/
-static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format, uint32_t height, uint32_t width, uint32_t stride);
+static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format, uint32_t width, uint32_t height, uint32_t stride);
 static char* convert_to_rgb();
 
 #endif
