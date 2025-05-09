@@ -1,15 +1,23 @@
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <string.h>
+#include "wlr-screencopy.h"
 #include <wayland-client.h>
 #include <errno.h>
-#include "wlr-screencopy.h"
-
-struct wl_shm *shm = NULL;
-struct wl_output *output = NULL;
-struct zwlr_screencopy_manager_v1 *screencopy = NULL;
-
+#include <time.h>
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include "stb_image_write.h"
+#include "screenshot.h"
+#include "frame_handler.h"
+#include "globals.c"
+#include "frame_handlers.c"
 
 static void registry_global_handler(void *data, struct wl_registry *registry, uint32_t name, const char *interface, uint32_t version) {
     /*
@@ -34,17 +42,7 @@ static void registry_global_handler(void *data, struct wl_registry *registry, ui
 
 }
 
-static void registry_global_handler_remove(void *data, struct wl_registry *registry, uint32_t name) {
-
-    /* no-op */
-}
-static void frame_handle_buffer_done(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
-static void frame_handle_flags(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t flags) { )
-static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
-static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
-static void frame_handle_format(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t format) {}
-static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *frame) {}
-
+static void registry_global_handler_remove(void *data, struct wl_registry *registry, uint32_t name) {/* no-op */}
 
 
 int main(int argc, char *argv[]) {
@@ -83,10 +81,17 @@ int main(int argc, char *argv[]) {
 
     //register frame event handler
     struct zwlr_screencopy_frame_v1 *frame = zwlr_screencopy_manager_v1_capture_output(screencopy, 1, output);
+    struct zwlr_screencopy_frame_v1_listener frame_listener = {
+        .buffer_done = frame_handle_buffer_done,
+        .flags       = frame_handle_flags,
+        .ready       = frame_handle_ready,
+        .failed      = frame_handle_failed,
+        .buffer      = frame_handle_buffer
+    };
     zwlr_screencopy_frame_v1_add_listener(frame, &frame_listener, NULL);
 
     // start the dispatch event loop
-    while (1) {wl_display_dispathc(display);}
+    while (1) {wl_display_dispatch(display);}
 
     return 0;
 }
