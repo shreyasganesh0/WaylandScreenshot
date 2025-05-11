@@ -63,11 +63,6 @@ int main(int argc, char *argv[]) {
         return -1;
     }
 
-    struct wl_registry_listener registry_listener = {
-
-        .global =  registry_global_handler, 
-        .global_remove = registry_global_handler_remove,
-    };
 
     //register registry event handler
     wl_registry_add_listener(registry, &registry_listener, NULL);
@@ -81,13 +76,6 @@ int main(int argc, char *argv[]) {
 
     //register frame event handler
     struct zwlr_screencopy_frame_v1 *frame = zwlr_screencopy_manager_v1_capture_output(screencopy, 1, output);
-    struct zwlr_screencopy_frame_v1_listener frame_listener = {
-        .buffer_done = frame_handle_buffer_done,
-        .flags       = frame_handle_flags,
-        .ready       = frame_handle_ready,
-        .failed      = frame_handle_failed,
-        .buffer      = frame_handle_buffer
-    };
     zwlr_screencopy_frame_v1_add_listener(frame, &frame_listener, NULL);
 
     // start the dispatch event loop

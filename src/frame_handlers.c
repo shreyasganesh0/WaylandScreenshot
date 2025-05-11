@@ -1,17 +1,13 @@
-static void frame_handle_buffer_done(void *data, struct zwlr_screencopy_frame_v1 *frame) {
-
-    zwlr_screencopy_frame_v1_copy(frame, frame_cap.wl_buffer);
-}
 
 static char* convert_to_rgb() {
 
     uint8_t *ptr = malloc(frame_cap.width * frame_cap.height * 3);
+    char *px = ((char*)frame_cap.data);
     for (int i = 0; i < frame_cap.width * frame_cap.height; i++) {
 
-        uint32_t px = ((uint32_t*)frame_cap.data)[i];
-        ptr[3*i + 0] = (px >> 16) & 0XFF;
-        ptr[3*i + 1] = (px >> 8) & 0XFF;
-        ptr[3*i + 2] = (px) & 0XFF;
+        ptr[3*i + 0] = px[3*i + 2];
+        ptr[3*i + 1] = px[3*i + 1];
+        ptr[3*i + 2] = px[3*i + 0];
     }
 
     return ptr;
@@ -21,6 +17,7 @@ static void frame_handle_flags(void *data, struct zwlr_screencopy_frame_v1 *fram
 
 static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *frame, uint32_t tv_sec_hi, uint32_t tv_sec_lo, uint32_t tv_nsec) {
 
+    fprintf(stderr, "Handling the screen buf\n");
 
     time_t now = time(NULL);
     if (now == (time_t)-1) {
@@ -43,20 +40,24 @@ static void frame_handle_ready(void *data, struct zwlr_screencopy_frame_v1 *fram
     }
 
     char file_path[128];
-    sprintf(file_path, "Screenshots/screenshot-%s.jpg", buf);
+    sprintf(file_path, "/home/shreyas/Screenshots/screenshot-%s.jpg", buf);
+    int fd = open(file_path, O_RDWR|O_CREAT|O_TRUNC, 0644);
+    if (fd == -1) {
+
+        printf("Failed to create ss file\n");
+    }
 
     printf("Writing to file path %s\n", file_path);
+
     char *rgb = convert_to_rgb();
     int quality = 90; // 1 - 100
     if(!stbi_write_jpg(file_path, frame_cap.width, frame_cap.height, 3, rgb, quality)) {
-
-        fprintf(stderr, "Failed to write png\n");
+        fprintf(stderr, "stbi_write_jpg failed: %s\n", strerror(errno));
         return;
     }
-
-    free(rgb);
-    close(frame_cap.fd);
     zwlr_screencopy_frame_v1_destroy(frame);
+    free(rgb);
+
 }
 
 static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *frame) {
@@ -73,6 +74,9 @@ static void frame_handle_failed(void *data, struct zwlr_screencopy_frame_v1 *fra
 
 static void buffer_release(void *data, struct wl_buffer *wl_buffer) {
 
+    size_t size = (size_t)frame_cap.stride * frame_cap.height;
+    munmap(frame_cap.data, size);
+    close(frame_cap.fd);
     wl_buffer_destroy(wl_buffer);
 }
 
@@ -106,12 +110,18 @@ static void frame_handle_buffer(void *data, struct zwlr_screencopy_frame_v1 *fra
     unlink(template);
 
     struct wl_shm_pool *pool = wl_shm_create_pool(shm, frame_cap.fd, size);
-    frame_cap.wl_buffer = wl_shm_pool_create_buffer(pool, 0 , width, height, stride, format);
-    wl_shm_pool_destroy(pool);
-    struct wl_buffer_listener buffer_listener = {
+    if (!pool) {
 
-        .release = buffer_release
-    };
+        printf("Failed to create pool\n");
+    }
+    frame_cap.wl_buffer = wl_shm_pool_create_buffer(pool, 0 , width, height, stride, format);
+    if (!frame_cap.wl_buffer) {
+
+        printf("Failed to create pool\n");
+    }
+    wl_shm_pool_destroy(pool);
     wl_buffer_add_listener(frame_cap.wl_buffer, &buffer_listener, NULL);
+    fprintf(stderr, "copying\n");
+    zwlr_screencopy_frame_v1_copy(frame, frame_cap.wl_buffer);
 
 }
